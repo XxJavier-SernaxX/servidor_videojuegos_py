@@ -9,10 +9,10 @@ class Level(Enum):
     DIAMOND  = 4   # partida ~20 min
 
 MATCH_DURATION = {
-    Level.BRONZE:  300,
-    Level.SILVER:  480,
-    Level.GOLD:    720,
-    Level.DIAMOND: 1200,
+    Level.BRONZE:  30,
+    Level.SILVER:  80,
+    Level.GOLD:    100,
+    Level.DIAMOND: 150,
 }
 
 PLAYERS_NEEDED = 4  # jugadores por partida
