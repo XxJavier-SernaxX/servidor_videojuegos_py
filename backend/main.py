@@ -37,7 +37,9 @@ class Match:
     current_question: int = 0
     scores: Dict[str, int] = field(default_factory=dict)
     answers: Dict[str, Dict] = field(default_factory=dict)
+    answer_times: Dict[str, Dict] = field(default_factory=dict)
     started_at: float = field(default_factory=time.time)
+    question_start_time: float = 0
     status: str = "waiting"
     winner: Optional[str] = None
     size: int = 2
@@ -45,10 +47,10 @@ class Match:
 # ================= CONFIGURACION =================
 DEFAULT_SIZE = 2
 MATCH_DURATION = {
-    Level.BRONZE: 5,
-    Level.SILVER: 4,
-    Level.GOLD: 3,
-    Level.DIAMOND: 2,
+    Level.BRONZE: 10,
+    Level.SILVER: 8,
+    Level.GOLD: 6,
+    Level.DIAMOND: 5,
 }
 POINTS_PER_LEVEL = {
     Level.BRONZE: 10,
@@ -56,9 +58,10 @@ POINTS_PER_LEVEL = {
     Level.GOLD: 30,
     Level.DIAMOND: 50,
 }
+# Puntos por respuesta según velocidad (primeros = más puntos)
+SPEED_POINTS = [10, 8, 6, 4, 3, 2, 1, 0]
 
 # ================= COLAS =================
-# Cada cola ahora guarda tuplas (username, size, joined_time)
 queues: Dict[Level, List[Dict]] = {
     Level.BRONZE: [],
     Level.SILVER: [],
@@ -252,7 +255,7 @@ async def get_status():
                 "level": m.level.value,
                 "status": m.status,
                 "scores": m.scores,
-                "time_left": max(0, int(MATCH_DURATION[m.level] * 3 - (now - m.started_at))) if m.status == "active" else 0,
+                "time_left": max(0, int(MATCH_DURATION[m.level] - (now - m.question_start_time))) if m.status == "active" and m.question_start_time > 0 else 0,
                 "current_question": m.current_question + 1 if m.status == "active" else 0,
                 "total_questions": len(m.questions)
             }
@@ -287,7 +290,6 @@ async def get_status():
             for m in matches_history[-10:]
         ]
     }
-
 # ================= MATCHMAKING =================
 async def try_create_match(level: Level, target_size: int):
     await asyncio.sleep(0.5)
@@ -364,7 +366,15 @@ async def run_quiz(match_id: str):
     
     for q_idx, question in enumerate(match.questions):
         match.current_question = q_idx
+        match.question_start_time = time.time()
         
+        # Limpiar respuestas para esta pregunta
+        if q_idx not in match.answers:
+            match.answers[q_idx] = {}
+        if q_idx not in match.answer_times:
+            match.answer_times[q_idx] = {}
+        
+        # Enviar pregunta
         await broadcast_to_players(match.players, {
             "type": "question",
             "question": question["question"],
@@ -375,38 +385,68 @@ async def run_quiz(match_id: str):
             "level": match.level.value
         })
         
+        # Esperar tiempo para respuestas
         await asyncio.sleep(MATCH_DURATION[match.level])
         
         correct_answer = question["correct"]
         
+        # Obtener respuestas ordenadas por tiempo
+        sorted_answers = []
         for player_name in match.players:
             if player_name in match.answers and q_idx in match.answers[player_name]:
-                if match.answers[player_name][q_idx] == correct_answer:
-                    match.scores[player_name] = match.scores.get(player_name, 0) + 10
+                answer = match.answers[player_name][q_idx]
+                answer_time = match.answer_times[q_idx].get(player_name, MATCH_DURATION[match.level])
+                sorted_answers.append((player_name, answer, answer_time))
         
+        # Ordenar por tiempo de respuesta (los más rápidos primero)
+        sorted_answers.sort(key=lambda x: x[2])
+        
+        # Asignar puntos según la velocidad de respuesta
+        correct_idx = 0
+        for player_name, answer, answer_time in sorted_answers:
+            if answer == correct_answer:
+                speed_points = SPEED_POINTS[correct_idx] if correct_idx < len(SPEED_POINTS) else 1
+                match.scores[player_name] = match.scores.get(player_name, 0) + speed_points
+                print(f"✅ {player_name} acertó! +{speed_points} puntos (posición {correct_idx+1})")
+                correct_idx += 1
+        
+        # Enviar resultados
         await broadcast_to_players(match.players, {
             "type": "answers_result",
             "correct_answer": correct_answer,
-            "scores": match.scores
+            "scores": match.scores,
+            "question_number": q_idx + 1
         })
         
         await asyncio.sleep(2)
     
     await finish_match(match_id)
-
 async def finish_match(match_id: str):
     if match_id not in active_matches:
         return
     
     match = active_matches[match_id]
+    print(f"🏁 Finalizando match {match_id}")
+    print(f"📊 Puntuaciones antes de finalizar: {match.scores}")
     
+    # Calcular ganador basado en puntuaciones totales
+    winner = None
     if match.scores:
         winner = max(match.scores.items(), key=lambda x: x[1])[0]
         match.winner = winner
         points = POINTS_PER_LEVEL[match.level]
         users[winner].points += points
         users[winner].wins += 1
+        print(f"🏆 GANADOR FINAL: {winner}")
+        print(f"🎯 {winner} gana +{points} puntos")
+    else:
+        print("⚠️ No hay puntuaciones para determinar ganador")
+        # Si no hay puntuaciones, el primer jugador gana por defecto
+        if match.players:
+            winner = match.players[0]
+            match.winner = winner
     
+    # Actualizar estadísticas de todos los jugadores
     for player_name in match.players:
         users[player_name].matches_played += 1
         users[player_name].status = "online"
@@ -414,18 +454,27 @@ async def finish_match(match_id: str):
     
     save_users()
     
+    # Enviar resultado final a cada jugador
     for player_name in match.players:
-        points_earned = POINTS_PER_LEVEL[match.level] if player_name == match.winner else 0
-        await send_to_player(player_name, {
+        points_earned = POINTS_PER_LEVEL[match.level] if player_name == winner else 0
+        my_score = match.scores.get(player_name, 0)
+        winner_score = match.scores.get(winner, 0) if winner else 0
+        
+        final_message = {
             "type": "match_end",
-            "winner": match.winner,
+            "winner": winner,
             "scores": match.scores,
             "points_earned": points_earned,
-            "level": match.level.value
-        })
+            "level": match.level.value,
+            "my_score": my_score,
+            "winner_score": winner_score
+        }
+        print(f"📨 Enviando a {player_name}: {final_message}")
+        await send_to_player(player_name, final_message)
     
     matches_history.append(match)
     del active_matches[match_id]
+    print(f"✅ Match {match_id} finalizado y guardado en historial")
 
 # ================= WEBSOCKET =================
 async def broadcast_to_players(players: List[str], message: dict):
@@ -458,13 +507,21 @@ async def websocket_endpoint(websocket: WebSocket, username: str):
                     if match_id in active_matches:
                         match = active_matches[match_id]
                         if username in match.players:
-                            if username not in match.answers:
-                                match.answers[username] = {}
-                            if question_idx not in match.answers[username]:
-                                match.answers[username][question_idx] = answer
-                                print(f"📝 {username} respondió: {answer}")
-            except:
-                pass
+                            if match.current_question == question_idx:
+                                # Guardar respuesta y tiempo
+                                if match.current_question not in match.answers:
+                                    match.answers[match.current_question] = {}
+                                if match.current_question not in match.answer_times:
+                                    match.answer_times[match.current_question] = {}
+                                
+                                if username not in match.answers[match.current_question]:
+                                    # Calcular tiempo transcurrido desde que comenzó la pregunta
+                                    time_elapsed = time.time() - match.question_start_time
+                                    match.answers[match.current_question][username] = answer
+                                    match.answer_times[match.current_question][username] = time_elapsed
+                                    print(f"📝 {username} respondió en {time_elapsed:.2f}s")
+            except Exception as e:
+                print(f"Error procesando mensaje: {e}")
     except:
         pass
     finally:

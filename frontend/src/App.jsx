@@ -48,9 +48,23 @@ export default function App() {
 
   // ================= TEMAS =================
   const t = theme === "dark" ? {
-    bg: "#020617", card: "#0F172A", border: "#1E293B", text: "#FFFFFF", sub: "#94A3B8", accent: "#2563EB"
+    bg: "#020617", 
+    card: "#0F172A", 
+    border: "#1E293B", 
+    text: "#FFFFFF", 
+    sub: "#94A3B8", 
+    accent: "#2563EB",
+    adminCard: "#111827",
+    adminCardText: "#FFFFFF"
   } : {
-    bg: "#F3F4F6", card: "#FFFFFF", border: "#D1D5DB", text: "#111827", sub: "#6B7280", accent: "#2563EB"
+    bg: "#F3F4F6", 
+    card: "#FFFFFF", 
+    border: "#D1D5DB", 
+    text: "#111827", 
+    sub: "#6B7280", 
+    accent: "#2563EB",
+    adminCard: "#FFFFFF",
+    adminCardText: "#111827"
   };
 
   // ================= OBTENER STATUS =================
@@ -72,7 +86,6 @@ export default function App() {
   useEffect(() => {
     if (!currentUser) return;
 
-    // Usar la IP correcta o localhost según el entorno
     const wsUrl = `ws://${window.location.hostname}:8000/ws/${currentUser.username}`;
     console.log("🔌 Conectando WebSocket a:", wsUrl);
     
@@ -93,9 +106,17 @@ export default function App() {
         setCountdown(3);
       }
 
-      if (data.type === "match_start") {
-        // El juego empieza después del countdown
-      }
+      if (data.type === "match_end") {
+  console.log("🏆 MATCH END RECIBIDO:", data);
+  setWinner(data.winner);
+  setPointsEarned(data.points_earned);
+  setQuizScores(data.scores);
+  setShowFinal(true);
+  setCurrentQuestion(null);
+  setQueueState("idle");
+  setMatchFound(null);
+  setShowCountdown(false);
+}
 
       if (data.type === "question") {
         setCurrentQuestion(data);
@@ -225,11 +246,14 @@ export default function App() {
   // ================= RESPUESTA QUIZ =================
   const sendAnswer = (answer) => {
     if (!ws || !matchFound || !currentQuestion) return;
+    
+    console.log("📤 Enviando respuesta:", answer);
+    
     ws.send(JSON.stringify({
       type: "answer",
       match_id: matchFound.match_id,
       question_idx: currentQuestion.question_number - 1,
-      answer: answer,
+      answer: answer
     }));
   };
 
@@ -330,34 +354,68 @@ export default function App() {
   }
 
   // ================= FINAL =================
+    //   // ================= FINAL =================
   if (showFinal) {
+    // Usar los datos que vienen del backend
     const isWinner = winner === currentUser?.username;
+    const winnerScore = quizScores[winner] || 0;
+    const myScore = quizScores[currentUser?.username] || 0;
+    
+    console.log("=== PANTALLA FINAL ===");
+    console.log("Winner recibido:", winner);
+    console.log("Current user:", currentUser?.username);
+    console.log("Es ganador?:", isWinner);
+    console.log("Puntos ganados:", pointsEarned);
+    console.log("Scores:", quizScores);
+    
     return (
       <div style={{ minHeight: "100vh", background: t.bg, display: "flex", justifyContent: "center", alignItems: "center", padding: 20 }}>
-        <div style={{ textAlign: "center", background: t.card, borderRadius: 24, padding: 50, border: `3px solid ${isWinner ? "#FBBF24" : "#EF4444"}`, animation: "fadeIn 0.5s ease" }}>
+        <div style={{ textAlign: "center", background: t.card, borderRadius: 24, padding: 50, border: `3px solid ${isWinner ? "#FBBF24" : "#EF4444"}`, animation: "fadeIn 0.5s ease", maxWidth: 500 }}>
           <style>{`@keyframes fadeIn { from { opacity: 0; transform: scale(0.9); } to { opacity: 1; transform: scale(1); } }`}</style>
+          
           {isWinner ? (
             <>
               <div style={{ fontSize: "5rem" }}>🏆🏆🏆</div>
-              <h1 style={{ color: "#FBBF24", fontSize: "3rem" }}>¡FELICIDADES!</h1>
+              <h1 style={{ color: "#FBBF24", fontSize: "3rem", margin: "10px 0" }}>¡FELICIDADES!</h1>
               <h2 style={{ color: t.text }}>¡GANASTE LA PARTIDA!</h2>
               <div style={{ background: LEVELS[selectedLevel]?.color || t.accent, padding: 15, borderRadius: 16, margin: "20px 0" }}>
-                <p style={{ fontSize: "1.2rem" }}>Nivel {selectedLevel}</p>
-                <p style={{ fontSize: "2rem", fontWeight: "bold" }}>+{pointsEarned} puntos</p>
+                <p style={{ fontSize: "1.2rem", margin: 0 }}>Nivel {selectedLevel}</p>
+                <p style={{ fontSize: "2rem", fontWeight: "bold", margin: "10px 0 0 0" }}>+{pointsEarned} puntos</p>
+              </div>
+              <div style={{ background: "#1E293B", padding: 15, borderRadius: 16, marginTop: 10 }}>
+                <p style={{ margin: 0 }}>Tu puntuación total: <strong style={{ color: "#10B981" }}>{myScore}</strong> pts</p>
+                <p style={{ margin: "10px 0 0 0" }}>Ganaste con <strong style={{ color: "#FBBF24" }}>{winnerScore}</strong> puntos</p>
               </div>
             </>
           ) : (
             <>
               <div style={{ fontSize: "5rem" }}>😢</div>
-              <h1 style={{ color: "#94A3B8", fontSize: "2.5rem" }}>¡POR POCO!</h1>
-              <h2 style={{ color: "#FBBF24" }}>Ganó: {winner}</h2>
+              <h1 style={{ color: "#94A3B8", fontSize: "2.5rem", margin: "10px 0" }}>¡POR POCO!</h1>
+              <h2 style={{ color: "#FBBF24", fontSize: "1.8rem", margin: "10px 0" }}>
+                Ganó: <strong style={{ color: "#FBBF24" }}>{winner || "Desconocido"}</strong>
+              </h2>
               <div style={{ background: "#1E293B", padding: 15, borderRadius: 16, margin: "20px 0" }}>
-                <p>Puntuación del ganador: {quizScores[winner] || 0} pts</p>
-                <p>Tu puntuación: {quizScores[currentUser?.username] || 0} pts</p>
+                <p style={{ margin: 0 }}>Puntuación del ganador: <strong style={{ color: "#FBBF24" }}>{winnerScore}</strong> pts</p>
+                <p style={{ margin: "10px 0 0 0" }}>Tu puntuación: <strong style={{ color: "#10B981" }}>{myScore}</strong> pts</p>
+                <p style={{ marginTop: 10, fontSize: "0.9rem", color: t.sub }}>Diferencia: <strong>{winnerScore - myScore}</strong> puntos</p>
               </div>
             </>
           )}
-          <button onClick={() => { setShowFinal(false); setMatchFound(null); setWinner(""); }} style={mainButton(t)}>VOLVER AL LOBBY</button>
+          
+          <button 
+            onClick={() => { 
+              setShowFinal(false); 
+              setMatchFound(null); 
+              setWinner("");
+              setQuizScores({});
+              setPointsEarned(0);
+              setQueueState("idle");
+              setCurrentQuestion(null);
+            }} 
+            style={{ ...mainButton(t), marginTop: 20, cursor: "pointer" }}
+          >
+            VOLVER AL LOBBY
+          </button>
         </div>
       </div>
     );
@@ -379,23 +437,23 @@ export default function App() {
         </div>
         
         <div style={gridStyle}>
-          <AdminCard title="👥 Online" value={serverStatus?.online_players || 0} />
-          <AdminCard title="⏳ En cola" value={queuePlayers} />
-          <AdminCard title="🎮 Jugando" value={serverStatus?.playing_players || 0} />
-          <AdminCard title="⚔️ Partidas" value={serverStatus?.active_matches?.length || 0} />
+          <AdminCard title="👥 Online" value={serverStatus?.online_players || 0} theme={t} />
+          <AdminCard title="⏳ En cola" value={queuePlayers} theme={t} />
+          <AdminCard title="🎮 Jugando" value={serverStatus?.playing_players || 0} theme={t} />
+          <AdminCard title="⚔️ Partidas" value={serverStatus?.active_matches?.length || 0} theme={t} />
         </div>
         
-        <h2 style={{ marginTop: 30 }}>🎯 ESTADO DE SALAS</h2>
+        <h2 style={{ marginTop: 30, color: t.text }}>🎯 ESTADO DE SALAS</h2>
         {Object.entries(serverStatus?.queues || {}).map(([level, room]) => (
           <div key={level} style={roomStyle(t)}>
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-              <h2>{LEVELS[level]?.icon} {level}</h2>
-              <p>{room.players?.length || 0} jugadores en cola</p>
+              <h2 style={{ color: t.text }}>{LEVELS[level]?.icon} {level}</h2>
+              <p style={{ color: t.text }}>{room.players?.length || 0} jugadores en cola</p>
             </div>
             <div style={{ marginTop: 10 }}>
               {room.players?.map(player => (
                 <div key={player.username} style={playerStyle}>
-                  <div style={{ display: "flex", justifyContent: "space-between" }}>
+                  <div style={{ display: "flex", justifyContent: "space-between", color: t.text }}>
                     <span>👤 {player.username}</span>
                     <span>🎯 Tamaño: {player.size}</span>
                     <span>⏱ Espera: {player.waiting_time}s</span>
@@ -409,28 +467,28 @@ export default function App() {
           </div>
         ))}
         
-        <h2 style={{ marginTop: 30 }}>⚔️ PARTIDAS ACTIVAS</h2>
+        <h2 style={{ marginTop: 30, color: t.text }}>⚔️ PARTIDAS ACTIVAS</h2>
         {serverStatus?.active_matches?.map(match => (
           <div key={match.id} style={roomStyle(t)}>
             <div style={{ display: "flex", justifyContent: "space-between" }}>
-              <h3>Partida #{match.id}</h3>
+              <h3 style={{ color: t.text }}>Partida #{match.id}</h3>
               <span style={{ color: match.status === "active" ? "#10B981" : "#FBBF24" }}>
                 {match.status === "active" ? "🟢 EN CURSO" : "⏳ ESPERANDO"}
               </span>
             </div>
-            <p>Nivel: {match.level}</p>
-            <p>Jugadores: {match.players?.join(", ")}</p>
+            <p style={{ color: t.text }}>Nivel: {match.level}</p>
+            <p style={{ color: t.text }}>Jugadores: {match.players?.join(", ")}</p>
             {match.status === "active" && (
               <>
-                <p>⏱ Tiempo restante: {match.time_left}s</p>
-                <p>📝 Pregunta: {match.current_question}/{match.total_questions}</p>
+                <p style={{ color: t.text }}>⏱ Tiempo restante: {match.time_left}s</p>
+                <p style={{ color: t.text }}>📝 Pregunta: {match.current_question}/{match.total_questions}</p>
               </>
             )}
             {Object.keys(match.scores || {}).length > 0 && (
               <div style={{ marginTop: 10 }}>
-                <strong>Puntuaciones:</strong>
+                <strong style={{ color: t.text }}>Puntuaciones:</strong>
                 {Object.entries(match.scores).map(([p, s]) => (
-                  <div key={p}>• {p}: {s} pts</div>
+                  <div key={p} style={{ color: t.text }}>• {p}: {s} pts</div>
                 ))}
               </div>
             )}
@@ -440,9 +498,9 @@ export default function App() {
           <p style={{ color: t.sub }}>No hay partidas activas</p>
         )}
         
-        <h2 style={{ marginTop: 30 }}>⭐ TOP JUGADORES</h2>
+        <h2 style={{ marginTop: 30, color: t.text }}>⭐ TOP JUGADORES</h2>
         {serverStatus?.leaderboard?.map((p, idx) => (
-          <div key={p.username} style={{ ...playerStyle, display: "flex", justifyContent: "space-between" }}>
+          <div key={p.username} style={{ ...playerStyle, display: "flex", justifyContent: "space-between", color: t.text }}>
             <span>{idx === 0 ? "🥇" : idx === 1 ? "🥈" : idx === 2 ? "🥉" : `${idx+1}°`} {p.username}</span>
             <span>⭐ {p.points} pts</span>
             <span>🏆 {p.wins} wins</span>
@@ -545,10 +603,10 @@ export default function App() {
 }
 
 // ================= COMPONENTES =================
-function AdminCard({ title, value }) {
+function AdminCard({ title, value, theme }) {
   return (
-    <div style={{ background: "#111827", padding: 25, borderRadius: 20 }}>
-      <h3>{title}</h3>
+    <div style={{ background: theme.adminCard, padding: 25, borderRadius: 20, border: `1px solid ${theme.border}` }}>
+      <h3 style={{ color: theme.adminCardText }}>{title}</h3>
       <h1 style={{ fontSize: "3rem", color: "#3B82F6" }}>{value}</h1>
     </div>
   );
