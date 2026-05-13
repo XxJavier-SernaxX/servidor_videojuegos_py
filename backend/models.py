@@ -1,33 +1,63 @@
 from enum import Enum
 from dataclasses import dataclass, field
-import time, uuid
+from typing import List, Dict, Optional
+import time
+
 
 class Level(Enum):
-    BRONZE   = 1   # partida ~5 min
-    SILVER   = 2   # partida ~8 min
-    GOLD     = 3   # partida ~12 min
-    DIAMOND  = 4   # partida ~20 min
+    BRONZE = "BRONZE"
+    SILVER = "SILVER"
+    GOLD = "GOLD"
+    DIAMOND = "DIAMOND"
 
-MATCH_DURATION = {
-    Level.BRONZE:  30,
-    Level.SILVER:  80,
-    Level.GOLD:    100,
-    Level.DIAMOND: 150,
-}
-
-PLAYERS_NEEDED = 4  # jugadores por partida
 
 @dataclass
 class Player:
-    name: str
-    level: Level
-    id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
-    joined_at: float = field(default_factory=time.time)
+    username: str
+    password: str = ""
+    role: str = "player"
+
+    points: int = 0
+    wins: int = 0
+    matches_played: int = 0
+
+    level: Level = Level.BRONZE
+    status: str = "offline"
+
+    current_match: Optional[str] = None
+    joined_queue_at: Optional[float] = None
+
 
 @dataclass
 class Match:
-    players: list
+    id: str
+    players: List[str]
     level: Level
-    id: str = field(default_factory=lambda: str(uuid.uuid4())[:8])
+    questions: List[Dict]
+
+    current_question: int = 0
+
+    scores: Dict[str, int] = field(default_factory=dict)
+    answers: Dict[str, Dict] = field(default_factory=dict)
+
     started_at: float = field(default_factory=time.time)
-    duration: int = 0  # segundos
+
+    status: str = "waiting"
+    winner: Optional[str] = None
+
+
+PLAYERS_NEEDED = 2
+
+MATCH_DURATION = {
+    Level.BRONZE: 5,
+    Level.SILVER: 4,
+    Level.GOLD: 3,
+    Level.DIAMOND: 2,
+}
+
+POINTS_PER_LEVEL = {
+    Level.BRONZE: 10,
+    Level.SILVER: 20,
+    Level.GOLD: 30,
+    Level.DIAMOND: 50,
+}

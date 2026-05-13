@@ -1,0 +1,57 @@
+{
+  "admin": {
+    "username": "admin",
+    "password": "123",
+    "points": 0,
+    "wins": 0,
+    "matches_played": 0,
+    "level": "BRONZE",
+    "status": "online",
+    "current_match": null,
+    "joined_queue_at": null
+  },
+  "as": {
+    "username": "as",
+    "password": "as",
+    "points": 60,
+    "wins": 6,
+    "matches_played": 16,
+    "level": "BRONZE",
+    "status": "online",
+    "current_match": null,
+    "joined_queue_at": 1778709060.9854445
+  },
+  "jav": {
+    "username": "jav",
+    "password": "123",
+    "points": 140,
+    "wins": 10,
+    "matches_played": 17,
+    "level": "BRONZE",
+    "status": "online",
+    "current_match": null,
+    "joined_queue_at": 1778709058.7671983
+  },
+  "Juana ": {
+    "username": "Juana ",
+    "password": "123",
+    "points": 0,
+    "wins": 0,
+    "matches_played": 1,
+    "level": "BRONZE",
+    "status": "online",
+    "current_match": null,
+    "joined_queue_at": 1778694628.6681182
+  },
+  "Ss": {
+    "username": "Ss",
+    "password": "12",
+    "points": 0,
+    "wins": 0,
+    "matches_played": 0,
+    "level": "BRONZE",
+    "status": "online",
+    "current_match": null,
+    "joined_queue_at": null
+  }
+}

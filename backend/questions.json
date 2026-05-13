@@ -1,0 +1,22 @@
+{
+  "BRONZE": [
+    {"question": "¿Cuánto es 2 + 2?", "options": ["3", "4", "5", "6"], "correct": 1},
+    {"question": "¿Qué color es el cielo?", "options": ["Verde", "Rojo", "Azul", "Amarillo"], "correct": 2},
+    {"question": "¿Cuál es la capital de España?", "options": ["Barcelona", "Madrid", "Valencia", "Sevilla"], "correct": 1}
+  ],
+  "SILVER": [
+    {"question": "¿Cuánto es 10 × 10?", "options": ["10", "50", "100", "1000"], "correct": 2},
+    {"question": "¿Quién pintó la Mona Lisa?", "options": ["Van Gogh", "Picasso", "Dalí", "Da Vinci"], "correct": 3},
+    {"question": "¿Cuál es el río más largo del mundo?", "options": ["Amazonas", "Nilo", "Yangtsé", "Misisipi"], "correct": 0}
+  ],
+  "GOLD": [
+    {"question": "¿Cuál es la raíz cuadrada de 144?", "options": ["10", "11", "12", "13"], "correct": 2},
+    {"question": "¿En qué año llegó el hombre a la luna?", "options": ["1967", "1968", "1969", "1970"], "correct": 2},
+    {"question": "¿Quién escribió 'Cien años de soledad'?", "options": ["Mario Vargas Llosa", "Gabriel García Márquez", "Julio Cortázar", "Pablo Neruda"], "correct": 1}
+  ],
+  "DIAMOND": [
+    {"question": "¿Cuál es el número de Euler?", "options": ["2.71828", "3.14159", "1.61803", "0.57721"], "correct": 0},
+    {"question": "¿En qué año cayó el Imperio Romano de Occidente?", "options": ["395", "410", "476", "565"], "correct": 2},
+    {"question": "¿Quién descubrió la penicilina?", "options": ["Louis Pasteur", "Alexander Fleming", "Marie Curie", "Isaac Newton"], "correct": 1}
+  ]
+}
